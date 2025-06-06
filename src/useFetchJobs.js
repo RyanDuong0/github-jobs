@@ -9,7 +9,7 @@ const ACTIONS = {
 }
 
 const BASE_URL = "https://remotive.com/api/remote-jobs"
-const PAGE_SIZE = 20; // Change this to the number of jobs per page you want
+const PAGE_SIZE = 20;
 
 function reducer(state, action){
     switch(action.type){
@@ -45,21 +45,32 @@ export default function useFetchJobs(params, page){
         })
             .then(res => {
                 const allJobs = res.data.jobs;
-                // Filter jobs as before
+
+                // Client-side filtering using params
                 const filteredJobs = allJobs.filter(job => {
-                    const title = job.title.toLowerCase();
-                    const location = job.candidate_required_location.toLowerCase();
-                    const description = job.description.toLowerCase();
-                    const isEnglishJob =
-                        location.includes("united kingdom") ||
-                            location.includes("uk") ||
-                            location.includes("remote") ||
-                            title.includes("english") ||
-                            description.includes("english");
-                    return isEnglishJob;
+                    // Description/title/company search
+                    const matchesSearch = params.search
+                        ? (
+                            (job.title + job.description + job.company_name)
+                            .toLowerCase()
+                            .includes(params.search.toLowerCase())
+                          )
+                        : true;
+
+                    // Location filter
+                    const matchesLocation = params.location
+                        ? job.candidate_required_location.toLowerCase().includes(params.location.toLowerCase())
+                        : true;
+
+                    // Full time filter
+                    const matchesFullTime = params.full_time
+                        ? job.job_type && job.job_type.toLowerCase() === "full_time"
+                        : true;
+
+                    return matchesSearch && matchesLocation && matchesFullTime;
                 });
 
-                // Client-side pagination
+                // Pagination
                 const startIdx = (page - 1) * PAGE_SIZE;
                 const endIdx = startIdx + PAGE_SIZE;
                 const jobsForPage = filteredJobs.slice(startIdx, endIdx);
